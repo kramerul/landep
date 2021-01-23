@@ -11,11 +11,7 @@ type cloudFoundryEnvironmentInstaller struct {
 	k8sTarget landep.K8sTarget
 }
 
-func CloudFoundryEnvironmentInstallerFactory(targets landep.Targets) (landep.Installer, error) {
-	target, err := targets.SingleTarget()
-	if err != nil {
-		return nil, err
-	}
+func CloudFoundryEnvironmentInstallerFactory(target landep.Target) (landep.Installer, error) {
 	k8sTarget, ok := target.(landep.K8sTarget)
 	if !ok {
 		return nil, errors.New("Not a K8sTarget")
@@ -26,8 +22,8 @@ func CloudFoundryEnvironmentInstallerFactory(targets landep.Targets) (landep.Ins
 func (s *cloudFoundryEnvironmentInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, dependencies *landep.Dependencies) (landep.Parameter, error) {
 	dc := landep.NewDependencyChecker(dependencies)
 	err := dc.WithRequired("cluster", "docker.io/pkgs/cluster", ">= 1.0", func(cluster *landep.Installation) error {
-		config := &ClusterResponse{}
-		err := json.Unmarshal(cluster.Response, config)
+		shootK8sConfig := &ClusterResponse{}
+		err := json.Unmarshal(cluster.Response, shootK8sConfig)
 		if err != nil {
 			return err
 		}
@@ -37,9 +33,11 @@ func (s *cloudFoundryEnvironmentInstaller) Apply(name string, images map[string]
 			if err != nil {
 				return err
 			}
-			return dc.Required("organization", "docker.io/pkgs/organization", ">= 1.0", landep.WithDefaultTarget(landep.NewCloudFoundryTarget(&config.CF)))
+			return dc.Required("organization", "docker.io/pkgs/organization", ">= 1.0", landep.WithTarget(landep.NewCloudFoundryTarget(&config.CF))).
+				Required("service-manager-agent", "docker.io/pkgs/service-manager-agent", ">= 1.0", landep.WithTarget(landep.NewK8sCloudFoundryBridingTarget("service-agent-manager", shootK8sConfig, &config.CF))).
+				Error()
 
-		}, landep.WithDefaultTarget(landep.NewK8sTarget("cf-system", s.k8sTarget.Config())))
+		}, landep.WithTarget(landep.NewK8sTarget("cf-system", shootK8sConfig)))
 
 	})
 	return []byte("{}"), err

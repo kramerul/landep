@@ -18,7 +18,7 @@ type Installation struct {
 	Version      semver.Version
 	Finalizers   map[string]bool
 	PkgName      string
-	Targets      Targets
+	Target       Target
 	Digest       string
 	Dependencies *Dependencies
 }
@@ -55,7 +55,7 @@ func (s *Dependencies) Installations() []*Installation {
 type RequestedDependency struct {
 	PkgName     string
 	Constraints *semver.Constraints
-	Targets     Targets
+	Target      Target
 	Parameter   Parameter
 }
 
@@ -64,4 +64,4 @@ type Installer interface {
 	Delete(name string) error
 }
 
-type InstallerFactory = func(targets Targets) (Installer, error)
+type InstallerFactory = func(target Target) (Installer, error)

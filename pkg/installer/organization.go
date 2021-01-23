@@ -10,11 +10,7 @@ type organizationInstaller struct {
 	cfTarget landep.CloudFoundryTarget
 }
 
-func OrganizationInstallerFactory(targets landep.Targets) (landep.Installer, error) {
-	target, err := targets.SingleTarget()
-	if err != nil {
-		return nil, err
-	}
+func OrganizationInstallerFactory(target landep.Target) (landep.Installer, error) {
 	cfTarget, ok := target.(landep.CloudFoundryTarget)
 	if !ok {
 		return nil, errors.New("Not a CloudFoundryTarget")

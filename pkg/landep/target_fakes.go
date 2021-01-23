@@ -14,6 +14,11 @@ type fakeTargetFactory struct {
 	log func(message string)
 }
 
+func (s *fakeTargetFactory) K8sCloudFoundryBridgingTarget(namespace string, config *K8sConfig, credentials *Credentials) K8sCloudFoundryBridgingTarget {
+	return &k8sCloudFoundryBridgingTargetFake{k8sTarget: &k8sTargetFake{namespace: namespace, config: config, log: s.log},
+		cloudFoundryTarget: &cloudFoundryTargetFake{url: credentials.URL, log: s.log}}
+}
+
 func (s *fakeTargetFactory) K8s(namespace string, config *K8sConfig) K8sTarget {
 	return &k8sTargetFake{namespace: namespace, config: config, log: s.log}
 }
@@ -96,4 +101,24 @@ func (s *cloudFoundryTargetFake) DeleteOrg(name string) error {
 func (s *cloudFoundryTargetFake) CreateOrg(name string, user string) error {
 	s.log(fmt.Sprintf("cf create org %s", name))
 	return nil
+}
+
+type k8sCloudFoundryBridgingTargetFake struct {
+	k8sTarget          K8sTarget
+	cloudFoundryTarget CloudFoundryTarget
+}
+
+func (s k8sCloudFoundryBridgingTargetFake) Digest() []byte {
+	hash := md5.New()
+	hash.Write(s.k8sTarget.Digest())
+	hash.Write(s.cloudFoundryTarget.Digest())
+	return hash.Sum(nil)
+}
+
+func (s k8sCloudFoundryBridgingTargetFake) K8sTarget() K8sTarget {
+	return s.k8sTarget
+}
+
+func (s k8sCloudFoundryBridgingTargetFake) CloudFoundryTarget() CloudFoundryTarget {
+	return s.cloudFoundryTarget
 }

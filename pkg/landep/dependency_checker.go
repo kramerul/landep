@@ -14,15 +14,12 @@ func NewDependencyChecker(dependencies *Dependencies) *dependencyChecker {
 
 type DependencyOption = func(dep *RequestedDependency)
 
-func WithDefaultTarget(target Target) DependencyOption {
-	return WithTargets(Targets{"default": target})
-}
-
-func WithTargets(targets Targets) DependencyOption {
+func WithTarget(target Target) DependencyOption {
 	return func(dep *RequestedDependency) {
-		dep.Targets = targets
+		dep.Target = target
 	}
 }
+
 func WithParameter(parameter Parameter) DependencyOption {
 	return func(dep *RequestedDependency) {
 		dep.Parameter = parameter
@@ -51,8 +48,9 @@ func (s *dependencyChecker) WithRequired(name string, pkgName string, constraint
 	return s.Error()
 }
 
-func (s *dependencyChecker) Required(name string, pkgName string, constraints string, options ...DependencyOption) error {
-	return s.WithRequired(name, pkgName, constraints, func(installation *Installation) error { return nil }, options...)
+func (s *dependencyChecker) Required(name string, pkgName string, constraints string, options ...DependencyOption) *dependencyChecker {
+	s.WithRequired(name, pkgName, constraints, func(installation *Installation) error { return nil }, options...)
+	return s
 }
 
 func (s *dependencyChecker) Error() error {

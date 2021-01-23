@@ -13,11 +13,7 @@ type istioInstaller struct {
 type IstioResponse struct {
 }
 
-func IstioInstallerFactory(targets landep.Targets) (landep.Installer, error) {
-	target, err := targets.SingleTarget()
-	if err != nil {
-		return nil, err
-	}
+func IstioInstallerFactory(target landep.Target) (landep.Installer, error) {
 	k8sTarget, ok := target.(landep.K8sTarget)
 	if !ok {
 		return nil, errors.New("Not a K8sTarget")

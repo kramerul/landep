@@ -15,11 +15,7 @@ type CloudFoundryResponse struct {
 	UAA landep.Credentials `json:"uaa"`
 }
 
-func CloudFoundryInstallerFactory(targets landep.Targets) (landep.Installer, error) {
-	target, err := targets.SingleTarget()
-	if err != nil {
-		return nil, err
-	}
+func CloudFoundryInstallerFactory(target landep.Target) (landep.Installer, error) {
 	k8sTarget, ok := target.(landep.K8sTarget)
 	if !ok {
 		return nil, errors.New("Not a K8sTarget")
@@ -29,7 +25,7 @@ func CloudFoundryInstallerFactory(targets landep.Targets) (landep.Installer, err
 
 func (s *cloudFoundryInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, dependencies *landep.Dependencies) (landep.Parameter, error) {
 	dc := landep.NewDependencyChecker(dependencies)
-	err := dc.Required("istio", "docker.io/pkgs/istio", ">= 1.0", landep.WithDefaultTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config())))
+	err := dc.Required("istio", "docker.io/pkgs/istio", ">= 1.0", landep.WithTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config()))).Error()
 	if err != nil {
 		return nil, err
 	}

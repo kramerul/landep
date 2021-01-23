@@ -2,7 +2,6 @@ package landep
 
 import (
 	"encoding/json"
-	"errors"
 )
 
 type BasicAuthorization struct {
@@ -19,21 +18,6 @@ type Target interface {
 	Digest() []byte
 }
 
-type Targets map[string]Target
-
-func (s *Targets) SingleTarget() (Target, error) {
-	switch len(*s) {
-	case 0:
-		return nil, errors.New("No target available")
-	case 1:
-		for _, v := range *s {
-			return v, nil
-		}
-	default:
-	}
-	return nil, errors.New("Too may targets")
-}
-
 type Helm interface {
 	Apply(name string, chart string, parameter json.RawMessage) error
 	Delete(name string) error
@@ -45,7 +29,7 @@ type Kapp interface {
 }
 
 type K8sConfig struct {
-	URL string
+	URL string `json "url"`
 }
 type K8sTarget interface {
 	Target
@@ -60,9 +44,16 @@ type CloudFoundryTarget interface {
 	DeleteOrg(name string) error
 }
 
+type K8sCloudFoundryBridgingTarget interface {
+	Target
+	K8sTarget() K8sTarget
+	CloudFoundryTarget() CloudFoundryTarget
+}
+
 type targetFactory interface {
 	K8s(namespace string, config *K8sConfig) K8sTarget
 	CloudFoundry(credentials *Credentials) CloudFoundryTarget
+	K8sCloudFoundryBridgingTarget(namespace string, config *K8sConfig, credentials *Credentials) K8sCloudFoundryBridgingTarget
 }
 
 var tf targetFactory
@@ -73,4 +64,8 @@ func NewK8sTarget(namespace string, config *K8sConfig) K8sTarget {
 
 func NewCloudFoundryTarget(credentials *Credentials) CloudFoundryTarget {
 	return tf.CloudFoundry(credentials)
+}
+
+func NewK8sCloudFoundryBridingTarget(namespace string, config *K8sConfig, credentials *Credentials) K8sCloudFoundryBridgingTarget {
+	return tf.K8sCloudFoundryBridgingTarget(namespace, config, credentials)
 }
