@@ -1,13 +1,15 @@
-package landep
+package installer
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.tools.sap/D001323/landep/pkg/landep"
 )
 
 type clusterInstaller struct {
-	k8sTarget K8sTarget
+	k8sTarget landep.K8sTarget
 }
 
 type ClusterResponse struct {
@@ -15,20 +17,20 @@ type ClusterResponse struct {
 	Config json.RawMessage `json:"config"`
 }
 
-func ClusterInstallerFactory(targets Targets) (Installer, error) {
+func ClusterInstallerFactory(targets landep.Targets) (landep.Installer, error) {
 	target, err := targets.SingleTarget()
 	if err != nil {
 		return nil, err
 	}
-	k8sTarget, ok := target.(K8sTarget)
+	k8sTarget, ok := target.(landep.K8sTarget)
 	if !ok {
 		return nil, errors.New("Not a K8sTarget")
 	}
 	return &clusterInstaller{k8sTarget: k8sTarget}, nil
 }
 
-func (s *clusterInstaller) Apply(name string, images map[string]Image, parameter []Parameter, dependencies InstalledDependencies) (Parameter, error) {
-	err := s.k8sTarget.CreateOrUpdate("cluster", name, []byte("{}"))
+func (s *clusterInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, dependencies *landep.Dependencies) (landep.Parameter, error) {
+	err := s.k8sTarget.Helm().Apply(name, "cluster", []byte("{}"))
 	if err != nil {
 		return nil, err
 	}
@@ -39,5 +41,5 @@ func (s *clusterInstaller) Apply(name string, images map[string]Image, parameter
 }
 
 func (s *clusterInstaller) Delete(name string) error {
-	return s.k8sTarget.Delete("cluster", name)
+	return s.k8sTarget.Helm().Delete(name)
 }

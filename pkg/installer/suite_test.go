@@ -1,4 +1,4 @@
-package landep
+package installer
 
 import (
 	"testing"
