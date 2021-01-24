@@ -24,3 +24,11 @@ See `installation_test.go`
 
 * For the special case of the environment broker, we need to create one namespace per environment. See [targets](#targets).
 * `component_descriptor` entry point
+
+
+## Running test
+
+```bash
+export ARTIFACTORY='{}'
+go test ./...
+```

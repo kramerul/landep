@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/Masterminds/semver/v3"
@@ -26,37 +25,33 @@ func CloudFoundryInstallerFactory(target landep.Target, version *semver.Version)
 	return &cloudFoundryInstaller{k8sTarget: k8sTarget, version: version}, nil
 }
 
-func (s *cloudFoundryInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, dependencies *landep.Dependencies) (landep.Parameter, error) {
-	dc := landep.NewDependencyChecker(dependencies)
-	err := dc.Required("istio", "docker.io/pkgs/istio", ">= 1.6", landep.WithTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config())),
-		landep.WithJsonParameter(&IstioParameter{Pilot: Pilot{Instances: 1}})).Error()
-	if err != nil {
-		return nil, err
-	}
-	params, err := landep.JsonMerge(parameter)
-	if err != nil {
-		return nil, err
-	}
-	err = s.k8sTarget.Kapp().Apply(name, "cf-for-k8s-scp", s.version, params)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(&CloudFoundryResponse{
-		CF: landep.Credentials{
-			URL: "https://api.exapmle.com",
-			Basic: landep.BasicAuthorization{
-				Username: "username",
-				Password: "password",
-			},
-		},
-		UAA: landep.Credentials{
-			URL: "https://uaa.exapmle.com",
-			Basic: landep.BasicAuthorization{
-				Username: "username",
-				Password: "password",
-			},
-		},
-	})
+func (s *cloudFoundryInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
+	return helper.
+		InstallationRequest("istio", "docker.io/pkgs/istio", ">= 1.6",
+			landep.WithTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config())),
+			landep.WithJsonParameter(&IstioParameter{Pilot: Pilot{Instances: 1}})).
+		Apply(parameter, func(params landep.Parameter) (interface{}, error) {
+			err := s.k8sTarget.Kapp().Apply(name, "cf-for-k8s-scp", s.version, params)
+			if err != nil {
+				return nil, err
+			}
+			return &CloudFoundryResponse{
+				CF: landep.Credentials{
+					URL: "https://api.exapmle.com",
+					Basic: landep.BasicAuthorization{
+						Username: "username",
+						Password: "password",
+					},
+				},
+				UAA: landep.Credentials{
+					URL: "https://uaa.exapmle.com",
+					Basic: landep.BasicAuthorization{
+						Username: "username",
+						Password: "password",
+					},
+				},
+			}, nil
+		})
 
 }
 

@@ -28,12 +28,24 @@ func MaximumConflictSolver(path string, j1 json.RawMessage, j2 json.RawMessage) 
 	return json.Marshal(&i1)
 }
 
-func JsonMerge(jsons []json.RawMessage) (json.RawMessage, error) {
-	return jsonMerge(jsons, "", defaultConflictSolver)
+type JsonMergeOptions struct {
+	conflictSolver func(path string, j1 json.RawMessage, j2 json.RawMessage) (json.RawMessage, error)
 }
 
-func JsonMergeWithConflictSolver(jsons []json.RawMessage, conflictSolver func(path string, j1 json.RawMessage, j2 json.RawMessage) (json.RawMessage, error)) (json.RawMessage, error) {
-	return jsonMerge(jsons, "", conflictSolver)
+type JsonMergeOption func(o *JsonMergeOptions)
+
+func WithConflictSolver(conflictSolver func(path string, j1 json.RawMessage, j2 json.RawMessage) (json.RawMessage, error)) JsonMergeOption {
+	return func(o *JsonMergeOptions) {
+		o.conflictSolver = conflictSolver
+	}
+}
+
+func JsonMerge(jsons []json.RawMessage, options ...JsonMergeOption) (json.RawMessage, error) {
+	jmo := &JsonMergeOptions{conflictSolver: defaultConflictSolver}
+	for _, o := range options {
+		o(jmo)
+	}
+	return jsonMerge(jsons, "", jmo.conflictSolver)
 }
 
 func jsonMerge(jsons []json.RawMessage, path string, conflictSolver func(path string, j1 json.RawMessage, j2 json.RawMessage) (json.RawMessage, error)) (json.RawMessage, error) {

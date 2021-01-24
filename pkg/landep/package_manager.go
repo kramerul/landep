@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"os"
 
 	semver "github.com/Masterminds/semver/v3"
 )
@@ -45,7 +46,7 @@ func requesterName(pkgName string, digest string) string {
 func (s *PackageManager) apply(target Target, pkgName string, constraints *semver.Constraints, parameter Parameter, requester string) (*Installation, error) {
 	digest := installationDigest(target, pkgName)
 	installation, ok := s.installationsByDigest[digest]
-	requestedDependency := RequestedDependency{
+	installationRequest := InstallationRequest{
 		PkgName:     pkgName,
 		Constraints: constraints,
 		Target:      target,
@@ -55,13 +56,13 @@ func (s *PackageManager) apply(target Target, pkgName string, constraints *semve
 	if ok {
 		request, ok := installation.Requests[requester]
 		if ok {
-			if bytes.Compare(request.Parameter, requestedDependency.Parameter) == 0 && request.Constraints == requestedDependency.Constraints {
+			if bytes.Compare(request.Parameter, installationRequest.Parameter) == 0 && request.Constraints == installationRequest.Constraints {
 				return installation, nil
 			}
 		}
-		installation.Requests[requester] = requestedDependency
+		installation.Requests[requester] = installationRequest
 	} else {
-		installation = &Installation{PkgName: pkgName, Target: target, Digest: digest, Requests: map[string]RequestedDependency{requester: requestedDependency}, Dependencies: &Dependencies{}}
+		installation = &Installation{PkgName: pkgName, Target: target, Digest: digest, Requests: map[string]InstallationRequest{requester: installationRequest}, Responses: map[string]Response{}}
 	}
 	installer, version, err := s.installer(target, pkgName, installation.IntersectedConstraints())
 	installation.Version = version
@@ -76,19 +77,31 @@ func (s *PackageManager) apply(target Target, pkgName string, constraints *semve
 				joinedParamater = append(joinedParamater, r.Parameter)
 			}
 		}
-		installation.Response, err = installer.Apply(digest, nil, joinedParamater, installation.Dependencies)
+		installation.Response, err = installer.Apply(digest, nil, joinedParamater, NewDependencyChecker(installation.Responses))
 		if err != nil {
 			dependenciesMissing, ok := err.(*DependenciesMissing)
 			if ok {
-				for k, v := range dependenciesMissing.RequestedDependencies {
-					if v.Target == nil {
-						v.Target = target
+				for k, v := range dependenciesMissing.DependencyRequests {
+					ir := v.Installation
+					if ir != nil {
+						if ir.Target == nil {
+							ir.Target = target
+						}
+						depInstallation, err := s.apply(ir.Target, ir.PkgName, ir.Constraints, ir.Parameter, subRequester)
+						if err != nil {
+							return nil, err
+						}
+						installation.Children = append(installation.Children, depInstallation)
+						installation.Responses[k] = depInstallation.Response
 					}
-					depInstallation, err := s.apply(v.Target, v.PkgName, v.Constraints, v.Parameter, subRequester)
-					if err != nil {
-						return nil, err
+					sc := v.Secret
+					if sc != nil {
+						env, ok := os.LookupEnv(sc.Name)
+						if !ok {
+							return nil, fmt.Errorf("missing environment variable %s", sc.Name)
+						}
+						installation.Responses[k] = []byte(env)
 					}
-					installation.Dependencies.Add(k, depInstallation)
 				}
 			} else {
 				return nil, err
@@ -128,7 +141,7 @@ func (s *PackageManager) delete(installation *Installation, requester string) er
 		return err
 	}
 	subRequester := requesterName(installation.PkgName, installation.Digest)
-	dependencies := installation.Dependencies.Installations()
+	dependencies := installation.Children
 	for i := len(dependencies) - 1; i >= 0; i-- {
 		err = s.delete(dependencies[i], subRequester)
 		if err != nil {

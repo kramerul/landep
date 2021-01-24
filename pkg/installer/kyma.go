@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/Masterminds/semver/v3"
@@ -23,24 +22,15 @@ func KymaInstallerFactory(target landep.Target, version *semver.Version) (landep
 	return &kymaInstaller{k8sTarget: k8sTarget, version: version}, nil
 }
 
-func (s *kymaInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, dependencies *landep.Dependencies) (landep.Parameter, error) {
-	dc := landep.NewDependencyChecker(dependencies)
-	err := dc.Required("istio", "docker.io/pkgs/istio", "~ 1.7",
+func (s *kymaInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
+	return helper.InstallationRequest("istio", "docker.io/pkgs/istio", "~ 1.7",
 		landep.WithTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config())),
-		landep.WithJsonParameter(&IstioParameter{Pilot: Pilot{Instances: 3}})).Error()
-	if err != nil {
-		return nil, err
-	}
-	params, err := landep.JsonMerge(parameter)
-	if err != nil {
-		return nil, err
-	}
-	err = s.k8sTarget.Helm().Apply(name, "kyma", s.version, params)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(&KymaResponse{})
+		landep.WithJsonParameter(&IstioParameter{Pilot: Pilot{Instances: 3}}),
+	).
+		Apply(parameter, func(params landep.Parameter) (interface{}, error) {
+			return &KymaResponse{}, s.k8sTarget.Helm().Apply(name, "kyma", s.version, params)
 
+		})
 }
 
 func (s *kymaInstaller) Delete(name string) error {

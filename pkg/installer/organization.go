@@ -25,7 +25,7 @@ func OrganizationInstallerFactory(target landep.Target, version *semver.Version)
 	return &organizationInstaller{cfTarget: cfTarget, version: version}, nil
 }
 
-func (s *organizationInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, dependencies *landep.Dependencies) (landep.Parameter, error) {
+func (s *organizationInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
 	params, err := landep.JsonMerge(parameter)
 	if err != nil {
 		return nil, err

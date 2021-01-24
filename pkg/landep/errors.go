@@ -1,34 +1,28 @@
 package landep
 
 import (
-	"fmt"
 	"strings"
 )
 
 type DependenciesMissing struct {
-	RequestedDependencies map[string]RequestedDependency
+	DependencyRequests map[string]DependencyRequest
 }
 
 func (d DependenciesMissing) Error() string {
 	var sb strings.Builder
 	sb.WriteString("the following dependencies are missing")
-	for k, v := range d.RequestedDependencies {
-		sb.WriteString(k)
-		sb.WriteString(": ")
-		sb.WriteString(v.PkgName)
-		sb.WriteString(", ")
+	for k, v := range d.DependencyRequests {
+		if v.Installation != nil {
+			sb.WriteString(k)
+			sb.WriteString(": ")
+			sb.WriteString(v.Installation.PkgName)
+			sb.WriteString(", ")
+		}
+		if v.Secret != nil {
+			sb.WriteString(v.Secret.Name)
+		}
 	}
 	return sb.String()
 }
 
-type DependencyStillRequired struct {
-	Installation *Installation
-	UsedBy       string
-}
-
-func (d DependencyStillRequired) Error() string {
-	return fmt.Sprintf("Installation %s is still required by %s", d.Installation, d.UsedBy)
-}
-
 var _ error = (*DependenciesMissing)(nil)
-var _ error = (*DependencyStillRequired)(nil)

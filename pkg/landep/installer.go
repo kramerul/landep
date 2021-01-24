@@ -14,6 +14,10 @@ type Image struct {
 
 type Parameter = json.RawMessage
 
+type Response = json.RawMessage
+
+type Secret = json.RawMessage
+
 type IntersectedConstrains []*semver.Constraints
 
 func (s IntersectedConstrains) Check(version *semver.Version) bool {
@@ -37,13 +41,14 @@ func (s IntersectedConstrains) String() string {
 }
 
 type Installation struct {
-	Response     Parameter                      `json:"-"`
-	Version      *semver.Version                `json:"version"`
-	Requests     map[string]RequestedDependency `json:"-"`
-	PkgName      string                         `json:"pkgName"`
-	Target       Target                         `json:"-"`
-	Digest       string                         `json:"-"`
-	Dependencies *Dependencies                  `json:"-"`
+	Response  Parameter                      `json:"-"`
+	Version   *semver.Version                `json:"version"`
+	Requests  map[string]InstallationRequest `json:"-"`
+	PkgName   string                         `json:"pkgName"`
+	Target    Target                         `json:"-"`
+	Digest    string                         `json:"-"`
+	Children  []*Installation                `json:"-"`
+	Responses map[string]Response            `json:"-"`
 }
 
 func (s *Installation) IntersectedConstraints() IntersectedConstrains {
@@ -54,44 +59,24 @@ func (s *Installation) IntersectedConstraints() IntersectedConstrains {
 	return intersectedConstraints
 }
 
-// Needs to preserve insertion sequence
-type Dependencies struct {
-	installations       []*Installation          `json:"-"`
-	installationsByName map[string]*Installation `json:",inline"`
-}
-
-func (s *Dependencies) Add(name string, installation *Installation) {
-	_, existing := s.installationsByName[name]
-	if existing {
-		return
-	}
-	if s.installationsByName == nil {
-		s.installationsByName = make(map[string]*Installation)
-	}
-	s.installationsByName[name] = installation
-	s.installations = append(s.installations, installation)
-}
-
-func (s *Dependencies) Get(name string) (*Installation, bool) {
-	i, ok := s.installationsByName[name]
-	return i, ok
-}
-
-func (s *Dependencies) Installations() []*Installation {
-	result := make([]*Installation, len(s.installations))
-	copy(result, s.installations)
-	return result
-}
-
-type RequestedDependency struct {
+type InstallationRequest struct {
 	PkgName     string              `json:"pkgName"`
 	Constraints *semver.Constraints `json:"constraints"`
 	Target      Target              `json:"target,omitempty"`
 	Parameter   Parameter           `json:"parameter,omitempty"`
 }
 
+type SecretRequest struct {
+	Name string `json:"name"`
+}
+
+type DependencyRequest struct {
+	Installation *InstallationRequest `json:"installation,omitempty"`
+	Secret       *SecretRequest       `json:"secret,omitempty"`
+}
+
 type Installer interface {
-	Apply(name string, images map[string]Image, parameter []Parameter, dependencies *Dependencies) (Parameter, error)
+	Apply(name string, images map[string]Image, parameter []Parameter, helper *InstallationHelper) (Parameter, error)
 	Delete(name string) error
 }
 

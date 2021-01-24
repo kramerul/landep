@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/Masterminds/semver/v3"
@@ -16,6 +15,12 @@ type serviceManagerAgentInstaller struct {
 type ServiceManagerAgentResponse struct {
 }
 
+type ImagePullSecrets struct {
+	Repository string `json:"repository"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+}
+
 func ServiceManagerAgentInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
 	cTarget, ok := target.(landep.K8sCloudFoundryBridgingTarget)
 	if !ok {
@@ -24,16 +29,12 @@ func ServiceManagerAgentInstallerFactory(target landep.Target, version *semver.V
 	return &serviceManagerAgentInstaller{target: cTarget, version: version}, nil
 }
 
-func (s *serviceManagerAgentInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, dependencies *landep.Dependencies) (landep.Parameter, error) {
-	params, err := landep.JsonMerge(parameter)
-	if err != nil {
-		return nil, err
-	}
-	err = s.target.K8sTarget().Helm().Apply(name, "service-manager-agent", s.version, params)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(&ServiceManagerAgentResponse{})
+func (s *serviceManagerAgentInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
+	var artifactory ImagePullSecrets
+	return helper.SecretRequest("artifactory", "ARTIFACTORY", &artifactory).
+		Apply(parameter, func(parameter landep.Parameter) (interface{}, error) {
+			return &ServiceManagerAgentResponse{}, s.target.K8sTarget().Helm().Apply(name, "service-manager-agent", s.version, parameter)
+		})
 }
 
 func (s *serviceManagerAgentInstaller) Delete(name string) error {
