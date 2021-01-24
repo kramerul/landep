@@ -2,6 +2,8 @@ package landep
 
 import (
 	"encoding/json"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 type BasicAuthorization struct {
@@ -19,12 +21,12 @@ type Target interface {
 }
 
 type Helm interface {
-	Apply(name string, chart string, parameter json.RawMessage) error
+	Apply(name string, chart string, version *semver.Version, parameter json.RawMessage) error
 	Delete(name string) error
 }
 
 type Kapp interface {
-	Apply(name string, chart string, parameter json.RawMessage) error
+	Apply(name string, chart string, version *semver.Version, parameter json.RawMessage) error
 	Delete(name string) error
 }
 

@@ -14,13 +14,14 @@ var _ = Describe("landep", func() {
 	}
 	landep.InitFakeTargetFactory(log)
 	repository := landep.Repository{}
+	repository.Register("docker.io/pkgs/kyma", semver.MustParse("1.16.0"), KymaInstallerFactory)
 	repository.Register("docker.io/pkgs/kyma", semver.MustParse("1.17.0"), KymaInstallerFactory)
 	repository.Register("docker.io/pkgs/istio", semver.MustParse("1.7.0"), IstioInstallerFactory)
 	repository.Register("docker.io/pkgs/cluster", semver.MustParse("1.0.1"), ClusterInstallerFactory)
 	repository.Register("docker.io/pkgs/cloud-foundry", semver.MustParse("2.0.0"), CloudFoundryInstallerFactory)
 	repository.Register("docker.io/pkgs/cloud-foundry-environment", semver.MustParse("1.0.0"), CloudFoundryEnvironmentInstallerFactory)
 	repository.Register("docker.io/pkgs/organization", semver.MustParse("1.0.0"), OrganizationInstallerFactory)
-	repository.Register("docker.io/pkgs/service-manager-agent", semver.MustParse("1.0.0"), ServiceManagerAgentInstallerFactory)
+	repository.Register("docker.io/pkgs/service-manager-agent", semver.MustParse("0.1.0"), ServiceManagerAgentInstallerFactory)
 
 	pkgManager := landep.NewPackageManager(repository)
 	k8sConfig := &landep.K8sConfig{URL: "https://gardener.canary.hana-ondemand.com"}
@@ -55,11 +56,11 @@ var _ = Describe("landep", func() {
 			_, err = pkgManager.Apply(target, "docker.io/pkgs/cloud-foundry-environment", constraint, parameter)
 			Expect(err).To(Succeed())
 			Expect(logs).To(HaveLen(5))
-			Expect(logs[0]).To(MatchRegexp("helm upgrade -i -n default \\w* cluster"))
-			Expect(logs[1]).To(MatchRegexp("helm upgrade -i -n istio-system \\w* istio"))
+			Expect(logs[0]).To(MatchRegexp("helm upgrade -i -n default --version 1.0.1 \\w* cluster"))
+			Expect(logs[1]).To(MatchRegexp("helm upgrade -i -n istio-system --version 1.7.0 \\w* istio"))
 			Expect(logs[2]).To(MatchRegexp("kapp deploy -n cf-system -a \\w* cf-for-k8s-scp"))
-			Expect(logs[3]).To(MatchRegexp("cf create org \\w*"))
-			Expect(logs[4]).To(MatchRegexp("helm upgrade -i -n service-agent-manager \\w* service-manager-agent"))
+			Expect(logs[3]).To(MatchRegexp("(helm upgrade -i -n service-agent-manager --version 0.1.0 \\w* service-manager-agent|cf create org \\w*)"))
+			Expect(logs[4]).To(MatchRegexp("(helm upgrade -i -n service-agent-manager --version 0.1.0 \\w* service-manager-agent|cf create org \\w*)"))
 		})
 		By("deletes", func() {
 			logs = nil
@@ -75,7 +76,7 @@ var _ = Describe("landep", func() {
 		})
 
 	})
-	It("deals with shared dependencies", func() {
+	It("deals with shared dependencies and conflicting parameters", func() {
 		target := landep.NewK8sTarget("cf-system", k8sConfig)
 		constraint, err := semver.NewConstraint(">= 1.0")
 		Expect(err).To(Succeed())
@@ -85,7 +86,7 @@ var _ = Describe("landep", func() {
 			_, err = pkgManager.Apply(target, "docker.io/pkgs/cloud-foundry", constraint, parameter)
 			Expect(err).To(Succeed())
 			Expect(logs).To(HaveLen(2))
-			Expect(logs[0]).To(MatchRegexp("helm upgrade -i -n istio-system \\w* istio"))
+			Expect(logs[0]).To(MatchRegexp(`helm upgrade -i -n istio-system --version 1.7.0 \w* istio \{"pilot":\{"instances":1\}\}`))
 			Expect(logs[1]).To(MatchRegexp("kapp deploy -n cf-system -a \\w* cf-for-k8s-scp"))
 		})
 		By("apply kyma", func() {
@@ -94,8 +95,10 @@ var _ = Describe("landep", func() {
 			parameter := landep.Parameter(nil)
 			_, err = pkgManager.Apply(target, "docker.io/pkgs/kyma", constraint, parameter)
 			Expect(err).To(Succeed())
-			Expect(logs).To(HaveLen(1))
-			Expect(logs[0]).To(MatchRegexp("helm upgrade -i -n kyma-system \\w* kyma"))
+			Expect(logs).To(HaveLen(2))
+			// Also update istio because of potential different parameters
+			Expect(logs[0]).To(MatchRegexp(`helm upgrade -i -n istio-system --version 1.7.0 \w* istio \{"pilot":\{"instances":3\}\}`))
+			Expect(logs[1]).To(MatchRegexp("helm upgrade -i -n kyma-system --version 1.17.0 \\w* kyma"))
 		})
 		By("deletes cloud-foundry and istio", func() {
 			logs = nil

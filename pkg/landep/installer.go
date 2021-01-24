@@ -2,6 +2,7 @@ package landep
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -13,20 +14,50 @@ type Image struct {
 
 type Parameter = json.RawMessage
 
+type IntersectedConstrains []*semver.Constraints
+
+func (s IntersectedConstrains) Check(version *semver.Version) bool {
+	for _, c := range s {
+		if !c.Check(version) {
+			return false
+		}
+	}
+	return true
+}
+
+func (s IntersectedConstrains) String() string {
+	sb := strings.Builder{}
+	for i, c := range s {
+		if i > 0 {
+			sb.WriteString(" and ")
+		}
+		sb.WriteString(c.String())
+	}
+	return sb.String()
+}
+
 type Installation struct {
-	Response     Parameter
-	Version      semver.Version
-	Finalizers   map[string]bool
-	PkgName      string
-	Target       Target
-	Digest       string
-	Dependencies *Dependencies
+	Response     Parameter                      `json:"-"`
+	Version      *semver.Version                `json:"version"`
+	Requests     map[string]RequestedDependency `json:"-"`
+	PkgName      string                         `json:"pkgName"`
+	Target       Target                         `json:"-"`
+	Digest       string                         `json:"-"`
+	Dependencies *Dependencies                  `json:"-"`
+}
+
+func (s *Installation) IntersectedConstraints() IntersectedConstrains {
+	intersectedConstraints := []*semver.Constraints{}
+	for _, r := range s.Requests {
+		intersectedConstraints = append(intersectedConstraints, r.Constraints)
+	}
+	return intersectedConstraints
 }
 
 // Needs to preserve insertion sequence
 type Dependencies struct {
-	installations       []*Installation
-	installationsByName map[string]*Installation
+	installations       []*Installation          `json:"-"`
+	installationsByName map[string]*Installation `json:",inline"`
 }
 
 func (s *Dependencies) Add(name string, installation *Installation) {
@@ -53,10 +84,10 @@ func (s *Dependencies) Installations() []*Installation {
 }
 
 type RequestedDependency struct {
-	PkgName     string
-	Constraints *semver.Constraints
-	Target      Target
-	Parameter   Parameter
+	PkgName     string              `json:"pkgName"`
+	Constraints *semver.Constraints `json:"constraints"`
+	Target      Target              `json:"target,omitempty"`
+	Parameter   Parameter           `json:"parameter,omitempty"`
 }
 
 type Installer interface {
@@ -64,4 +95,4 @@ type Installer interface {
 	Delete(name string) error
 }
 
-type InstallerFactory = func(target Target) (Installer, error)
+type InstallerFactory = func(target Target, version *semver.Version) (Installer, error)

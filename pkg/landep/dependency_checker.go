@@ -1,6 +1,10 @@
 package landep
 
-import "github.com/Masterminds/semver/v3"
+import (
+	"encoding/json"
+
+	"github.com/Masterminds/semver/v3"
+)
 
 type dependencyChecker struct {
 	requestedDependencies map[string]RequestedDependency
@@ -12,17 +16,26 @@ func NewDependencyChecker(dependencies *Dependencies) *dependencyChecker {
 	return &dependencyChecker{requestedDependencies: make(map[string]RequestedDependency), dependencies: dependencies}
 }
 
-type DependencyOption = func(dep *RequestedDependency)
+type DependencyOption = func(dep *RequestedDependency) error
 
 func WithTarget(target Target) DependencyOption {
-	return func(dep *RequestedDependency) {
+	return func(dep *RequestedDependency) error {
 		dep.Target = target
+		return nil
 	}
 }
 
 func WithParameter(parameter Parameter) DependencyOption {
-	return func(dep *RequestedDependency) {
+	return func(dep *RequestedDependency) error {
 		dep.Parameter = parameter
+		return nil
+	}
+}
+
+func WithJsonParameter(parameter interface{}) DependencyOption {
+	return func(dep *RequestedDependency) (err error) {
+		dep.Parameter, err = json.Marshal(parameter)
+		return
 	}
 }
 
@@ -39,7 +52,10 @@ func (s *dependencyChecker) WithRequired(name string, pkgName string, constraint
 		}
 		requestedDependency := RequestedDependency{PkgName: pkgName, Constraints: c}
 		for _, o := range options {
-			o(&requestedDependency)
+			err := o(&requestedDependency)
+			if err != nil {
+				return err
+			}
 		}
 		s.requestedDependencies[name] = requestedDependency
 		return s.Error()

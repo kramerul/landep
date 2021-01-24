@@ -16,8 +16,11 @@ An installation might only be installed once into a target. Therefore, in kubern
 
 The names of the installed software (e.g helm release) are build using a digest of the target and the installer.
 
+## Conflict resolution of shared installations
+
+See `installation_test.go`
+
 ## Open topics
 
 * For the special case of the environment broker, we need to create one namespace per environment. See [targets](#targets).
-* Finding consensus on different parameter sets
 * `component_descriptor` entry point

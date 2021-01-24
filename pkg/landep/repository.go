@@ -26,7 +26,7 @@ func (s *Repository) Register(name string, version *semver.Version, installer In
 	(*s)[name] = installers
 }
 
-func (s *Repository) Get(name string, contraints *semver.Constraints) (InstallerFactory, *semver.Version, error) {
+func (s *Repository) Get(name string, contraints IntersectedConstrains) (InstallerFactory, *semver.Version, error) {
 	installers, ok := (*s)[name]
 	if !ok {
 		return nil, nil, fmt.Errorf("Installer for name %s not found", name)

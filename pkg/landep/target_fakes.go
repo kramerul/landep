@@ -4,6 +4,8 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 func InitFakeTargetFactory(log func(message string)) {
@@ -42,8 +44,8 @@ type helmFake struct {
 	namespace string
 }
 
-func (s *helmFake) Apply(name string, chart string, parameter json.RawMessage) error {
-	s.log(fmt.Sprintf("helm upgrade -i -n %s %s %s", s.namespace, name, chart))
+func (s *helmFake) Apply(name string, chart string, version *semver.Version, parameter json.RawMessage) error {
+	s.log(fmt.Sprintf("helm upgrade -i -n %s --version %s %s %s %s", s.namespace, version.String(), name, chart, string(parameter)))
 	return nil
 }
 
@@ -57,8 +59,8 @@ type kappFake struct {
 	namespace string
 }
 
-func (s *kappFake) Apply(name string, chart string, parameter json.RawMessage) error {
-	s.log(fmt.Sprintf("kapp deploy -n %s -a %s %s", s.namespace, name, chart))
+func (s *kappFake) Apply(name string, chart string, version *semver.Version, parameter json.RawMessage) error {
+	s.log(fmt.Sprintf("kapp deploy -n %s -a %s %s %s", s.namespace, name, chart, string(parameter)))
 	return nil
 }
 
