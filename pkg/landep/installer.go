@@ -76,7 +76,7 @@ type DependencyRequest struct {
 }
 
 type Installer interface {
-	Apply(name string, images map[string]Image, parameter []Parameter, helper *InstallationHelper) (Parameter, error)
+	Apply(name string, images map[string]Image, helper *InstallationHelper) (Parameter, error)
 	Delete(name string) error
 }
 

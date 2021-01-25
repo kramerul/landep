@@ -23,8 +23,9 @@ func ClusterInstallerFactory(target landep.Target, version *semver.Version) (lan
 	return &clusterInstaller{k8sTarget: k8sTarget, version: version}, nil
 }
 
-func (s *clusterInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
-	return helper.Apply(parameter, func(params landep.Parameter) (interface{}, error) {
+func (s *clusterInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
+	var params landep.Response
+	return helper.ApplyJson(&params, func() (interface{}, error) {
 		return &ClusterResponse{
 			URL: fmt.Sprintf("https://%s.cluster.hana-ondemand.com", name),
 		}, s.k8sTarget.Helm().Apply(name, "cluster", s.version, params)

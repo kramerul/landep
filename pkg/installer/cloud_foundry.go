@@ -25,12 +25,14 @@ func CloudFoundryInstallerFactory(target landep.Target, version *semver.Version)
 	return &cloudFoundryInstaller{k8sTarget: k8sTarget, version: version}, nil
 }
 
-func (s *cloudFoundryInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
+func (s *cloudFoundryInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
+	var params landep.Parameter
+	var istioResponse IstioResponse
 	return helper.
-		InstallationRequest("istio", "docker.io/pkgs/istio", ">= 1.6",
+		InstallationRequest(&istioResponse, "istio", "docker.io/pkgs/istio", ">= 1.6",
 			landep.WithTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config())),
 			landep.WithJsonParameter(&IstioParameter{Pilot: Pilot{Instances: 1}})).
-		Apply(parameter, func(params landep.Parameter) (interface{}, error) {
+		ApplyJson(&params, func() (interface{}, error) {
 			err := s.k8sTarget.Kapp().Apply(name, "cf-for-k8s-scp", s.version, params)
 			if err != nil {
 				return nil, err

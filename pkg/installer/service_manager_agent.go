@@ -29,11 +29,12 @@ func ServiceManagerAgentInstallerFactory(target landep.Target, version *semver.V
 	return &serviceManagerAgentInstaller{target: cTarget, version: version}, nil
 }
 
-func (s *serviceManagerAgentInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
+func (s *serviceManagerAgentInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
 	var artifactory ImagePullSecrets
-	return helper.SecretRequest("artifactory", "ARTIFACTORY", &artifactory).
-		Apply(parameter, func(parameter landep.Parameter) (interface{}, error) {
-			return &ServiceManagerAgentResponse{}, s.target.K8sTarget().Helm().Apply(name, "service-manager-agent", s.version, parameter)
+	var params landep.Parameter
+	return helper.SecretRequest(&artifactory, "artifactory", "ARTIFACTORY").
+		Apply(&params, func() (interface{}, error) {
+			return &ServiceManagerAgentResponse{}, s.target.K8sTarget().Helm().Apply(name, "service-manager-agent", s.version, params)
 		})
 }
 

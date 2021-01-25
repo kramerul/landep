@@ -77,7 +77,7 @@ func (s *PackageManager) apply(target Target, pkgName string, constraints *semve
 				joinedParamater = append(joinedParamater, r.Parameter)
 			}
 		}
-		installation.Response, err = installer.Apply(digest, nil, joinedParamater, NewDependencyChecker(installation.Responses))
+		installation.Response, err = installer.Apply(digest, nil, NewDependencyChecker(joinedParamater, installation.Responses))
 		if err != nil {
 			dependenciesMissing, ok := err.(*DependenciesMissing)
 			if ok {
@@ -104,7 +104,7 @@ func (s *PackageManager) apply(target Target, pkgName string, constraints *semve
 					}
 				}
 			} else {
-				return nil, err
+				return nil, fmt.Errorf("apply of %s:%s on target %v failed: %v", pkgName, constraints.String(), target, err)
 			}
 		} else {
 			break

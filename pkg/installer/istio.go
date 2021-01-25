@@ -40,8 +40,9 @@ func istioConflictSolver(path string, j1 json.RawMessage, j2 json.RawMessage) (j
 	return nil, fmt.Errorf("Incompatible jsons at %s: '%s' '%s'", path, string(j1), string(j2))
 }
 
-func (s *istioInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
-	return helper.Apply(parameter, func(params landep.Parameter) (interface{}, error) {
+func (s *istioInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
+	var params landep.Parameter
+	return helper.ApplyJson(&params, func() (interface{}, error) {
 		return &IstioResponse{}, s.k8sTarget.Helm().Apply(name, "istio", s.version, params)
 	}, landep.WithConflictSolver(istioConflictSolver))
 }

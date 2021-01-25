@@ -9,11 +9,12 @@ import (
 type InstallationHelper struct {
 	requestedDependencies map[string]DependencyRequest
 	responses             map[string]Response
+	parameter             []Parameter
 	err                   error
 }
 
-func NewDependencyChecker(responses map[string]Response) *InstallationHelper {
-	return &InstallationHelper{requestedDependencies: make(map[string]DependencyRequest), responses: responses}
+func NewDependencyChecker(parameter []Parameter, responses map[string]Response) *InstallationHelper {
+	return &InstallationHelper{requestedDependencies: make(map[string]DependencyRequest), responses: responses, parameter: parameter}
 }
 
 type InstallationOption = func(dep *InstallationRequest) error
@@ -39,11 +40,11 @@ func WithJsonParameter(parameter interface{}) InstallationOption {
 	}
 }
 
-func (s *InstallationHelper) WithInstallationRequest(name string, pkgName string, constraints string, cb func(response Parameter) error, options ...InstallationOption) error {
+func (s *InstallationHelper) WithInstallationRequest(response interface{}, name string, pkgName string, constraints string, cb func() error, options ...InstallationOption) error {
 	if s.err != nil {
 		return s.err
 	}
-	response, ok := s.responses[name]
+	jsonResponse, ok := s.responses[name]
 	if !ok {
 		c, err := semver.NewConstraint(constraints)
 		if err != nil {
@@ -60,16 +61,23 @@ func (s *InstallationHelper) WithInstallationRequest(name string, pkgName string
 		s.requestedDependencies[name] = DependencyRequest{Installation: &installationRequest}
 		return s.Error()
 	}
-	s.err = cb(response)
+	s.err = json.Unmarshal(jsonResponse, response)
+	if s.err != nil {
+		return s.err
+	}
+	s.err = cb()
 	return s.Error()
 }
 
-func (s *InstallationHelper) InstallationRequest(name string, pkgName string, constraints string, options ...InstallationOption) *InstallationHelper {
-	s.WithInstallationRequest(name, pkgName, constraints, func(response Parameter) error { return nil }, options...)
+func (s *InstallationHelper) InstallationRequest(response interface{}, name string, pkgName string, constraints string, options ...InstallationOption) *InstallationHelper {
+	s.WithInstallationRequest(response, name, pkgName, constraints, func() error { return nil }, options...)
 	return s
 }
 
-func (s *InstallationHelper) SecretRequest(name string, secretName string, secret interface{}) *InstallationHelper {
+func (s *InstallationHelper) SecretRequest(secret interface{}, name string, secretName string) *InstallationHelper {
+	if s.err != nil {
+		return s
+	}
 	response, ok := s.responses[name]
 	if !ok {
 		secretRequest := SecretRequest{Name: secretName}
@@ -90,19 +98,40 @@ func (s *InstallationHelper) Error() error {
 	return nil
 }
 
-func (s *InstallationHelper) Apply(parameter []Parameter, cb func(Parameter) (interface{}, error), options ...JsonMergeOption) (Response, error) {
+func (s *InstallationHelper) ApplyJson(params *Parameter, cb func() (interface{}, error), options ...JsonMergeOption) (Response, error) {
 	if err := s.Error(); err != nil {
 		if err != nil {
 			return nil, err
 		}
 	}
-	params, err := JsonMerge(parameter, options...)
+	var err error
+	(*params), err = JsonMerge(s.parameter, options...)
 	if err != nil {
 		return nil, err
 	}
-	response, err := cb(params)
+	response, err := cb()
 	if err != nil {
 		return nil, err
 	}
 	return json.Marshal(response)
+}
+
+func (s *InstallationHelper) Apply(parameter interface{}, cb func() (interface{}, error), options ...JsonMergeOption) (Response, error) {
+	var params Parameter
+	return s.ApplyJson(&params, func() (interface{}, error) {
+		if params != nil {
+			err := json.Unmarshal(params, parameter)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return cb()
+	}, options...)
+}
+
+func (s *InstallationHelper) ApplyVoid(cb func() (interface{}, error), options ...JsonMergeOption) (Response, error) {
+	var params Parameter
+	return s.ApplyJson(&params, func() (interface{}, error) {
+		return cb()
+	}, options...)
 }

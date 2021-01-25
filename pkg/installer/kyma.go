@@ -22,14 +22,16 @@ func KymaInstallerFactory(target landep.Target, version *semver.Version) (landep
 	return &kymaInstaller{k8sTarget: k8sTarget, version: version}, nil
 }
 
-func (s *kymaInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
-	return helper.InstallationRequest("istio", "docker.io/pkgs/istio", "~ 1.7",
-		landep.WithTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config())),
-		landep.WithJsonParameter(&IstioParameter{Pilot: Pilot{Instances: 3}}),
-	).
-		Apply(parameter, func(params landep.Parameter) (interface{}, error) {
+func (s *kymaInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
+	var params landep.Parameter
+	var istioResponse IstioResponse
+	return helper.
+		InstallationRequest(&istioResponse, "istio", "docker.io/pkgs/istio", "~ 1.7",
+			landep.WithTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config())),
+			landep.WithJsonParameter(&IstioParameter{Pilot: Pilot{Instances: 3}}),
+		).
+		ApplyJson(&params, func() (interface{}, error) {
 			return &KymaResponse{}, s.k8sTarget.Helm().Apply(name, "kyma", s.version, params)
-
 		})
 }
 

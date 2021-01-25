@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/Masterminds/semver/v3"
@@ -25,24 +24,12 @@ func OrganizationInstallerFactory(target landep.Target, version *semver.Version)
 	return &organizationInstaller{cfTarget: cfTarget, version: version}, nil
 }
 
-func (s *organizationInstaller) Apply(name string, images map[string]landep.Image, parameter []landep.Parameter, helper *landep.InstallationHelper) (landep.Parameter, error) {
-	params, err := landep.JsonMerge(parameter)
-	if err != nil {
-		return nil, err
-	}
-	orgParams := &OrganizationParameter{Username: "admin"}
-	if params != nil {
-		err = json.Unmarshal(params, orgParams)
-		if err != nil {
-			return nil, err
-		}
-	}
-	err = s.cfTarget.CreateOrg(name, orgParams.Username)
-	if err != nil {
-		return nil, err
-	}
-	return []byte("{}"), nil
-
+func (s *organizationInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
+	orgParams := OrganizationParameter{Username: "admin"}
+	return helper.Apply(&orgParams, func() (interface{}, error) {
+		err := s.cfTarget.CreateOrg(name, orgParams.Username)
+		return &struct{}{}, err
+	})
 }
 
 func (s *organizationInstaller) Delete(name string) error {
