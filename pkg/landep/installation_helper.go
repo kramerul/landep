@@ -40,7 +40,7 @@ func WithJsonParameter(parameter interface{}) InstallationOption {
 	}
 }
 
-func (s *InstallationHelper) WithInstallationRequest(response interface{}, name string, pkgName string, constraints string, cb func() error, options ...InstallationOption) error {
+func (s *InstallationHelper) InstallationRequestCb(response interface{}, name string, pkgName string, constraints string, cb func() error, options ...InstallationOption) error {
 	if s.err != nil {
 		return s.err
 	}
@@ -49,7 +49,7 @@ func (s *InstallationHelper) WithInstallationRequest(response interface{}, name 
 		c, err := semver.NewConstraint(constraints)
 		if err != nil {
 			s.err = err
-			return s.Error()
+			return s.err
 		}
 		installationRequest := InstallationRequest{PkgName: pkgName, Constraints: c}
 		for _, o := range options {
@@ -70,7 +70,7 @@ func (s *InstallationHelper) WithInstallationRequest(response interface{}, name 
 }
 
 func (s *InstallationHelper) InstallationRequest(response interface{}, name string, pkgName string, constraints string, options ...InstallationOption) *InstallationHelper {
-	s.WithInstallationRequest(response, name, pkgName, constraints, func() error { return nil }, options...)
+	s.InstallationRequestCb(response, name, pkgName, constraints, func() error { return nil }, options...)
 	return s
 }
 
@@ -98,14 +98,34 @@ func (s *InstallationHelper) Error() error {
 	return nil
 }
 
-func (s *InstallationHelper) ApplyJson(params *Parameter, cb func() (interface{}, error), options ...JsonMergeOption) (Response, error) {
-	if err := s.Error(); err != nil {
-		if err != nil {
-			return nil, err
+func (s *InstallationHelper) MergedJsonParameter(parameter *Parameter, options ...JsonMergeOption) *InstallationHelper {
+	if s.err != nil {
+		return s
+	}
+	(*parameter), s.err = JsonMerge(s.parameter, options...)
+	return s
+}
+
+func (s *InstallationHelper) MergedParameter(parameter interface{}, options ...JsonMergeOption) *InstallationHelper {
+	if s.err != nil {
+		return s
+	}
+	parameterJson, err := JsonMerge(s.parameter, options...)
+	if err != nil {
+		s.err = err
+		return s
+	}
+	if parameterJson != nil {
+		s.err = json.Unmarshal(parameterJson, parameter)
+		if s.err != nil {
+			return s
 		}
 	}
-	var err error
-	(*params), err = JsonMerge(s.parameter, options...)
+	return s
+}
+
+func (s *InstallationHelper) Apply(cb func() (interface{}, error)) (Response, error) {
+	err := s.Error()
 	if err != nil {
 		return nil, err
 	}
@@ -114,24 +134,4 @@ func (s *InstallationHelper) ApplyJson(params *Parameter, cb func() (interface{}
 		return nil, err
 	}
 	return json.Marshal(response)
-}
-
-func (s *InstallationHelper) Apply(parameter interface{}, cb func() (interface{}, error), options ...JsonMergeOption) (Response, error) {
-	var params Parameter
-	return s.ApplyJson(&params, func() (interface{}, error) {
-		if params != nil {
-			err := json.Unmarshal(params, parameter)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return cb()
-	}, options...)
-}
-
-func (s *InstallationHelper) ApplyVoid(cb func() (interface{}, error), options ...JsonMergeOption) (Response, error) {
-	var params Parameter
-	return s.ApplyJson(&params, func() (interface{}, error) {
-		return cb()
-	}, options...)
 }

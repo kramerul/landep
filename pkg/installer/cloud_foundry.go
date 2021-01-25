@@ -29,10 +29,11 @@ func (s *cloudFoundryInstaller) Apply(name string, images map[string]landep.Imag
 	var params landep.Parameter
 	var istioResponse IstioResponse
 	return helper.
+		MergedJsonParameter(&params).
 		InstallationRequest(&istioResponse, "istio", "docker.io/pkgs/istio", ">= 1.6",
 			landep.WithTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config())),
 			landep.WithJsonParameter(&IstioParameter{Pilot: Pilot{Instances: 1}})).
-		ApplyJson(&params, func() (interface{}, error) {
+		Apply(func() (interface{}, error) {
 			err := s.k8sTarget.Kapp().Apply(name, "cf-for-k8s-scp", s.version, params)
 			if err != nil {
 				return nil, err

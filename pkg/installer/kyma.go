@@ -26,11 +26,12 @@ func (s *kymaInstaller) Apply(name string, images map[string]landep.Image, helpe
 	var params landep.Parameter
 	var istioResponse IstioResponse
 	return helper.
+		MergedJsonParameter(&params).
 		InstallationRequest(&istioResponse, "istio", "docker.io/pkgs/istio", "~ 1.7",
 			landep.WithTarget(landep.NewK8sTarget("istio-system", s.k8sTarget.Config())),
 			landep.WithJsonParameter(&IstioParameter{Pilot: Pilot{Instances: 3}}),
 		).
-		ApplyJson(&params, func() (interface{}, error) {
+		Apply(func() (interface{}, error) {
 			return &KymaResponse{}, s.k8sTarget.Helm().Apply(name, "kyma", s.version, params)
 		})
 }

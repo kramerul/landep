@@ -42,9 +42,11 @@ func istioConflictSolver(path string, j1 json.RawMessage, j2 json.RawMessage) (j
 
 func (s *istioInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
 	var params landep.Parameter
-	return helper.ApplyJson(&params, func() (interface{}, error) {
-		return &IstioResponse{}, s.k8sTarget.Helm().Apply(name, "istio", s.version, params)
-	}, landep.WithConflictSolver(istioConflictSolver))
+	return helper.
+		MergedJsonParameter(&params, landep.WithConflictSolver(istioConflictSolver)).
+		Apply(func() (interface{}, error) {
+			return &IstioResponse{}, s.k8sTarget.Helm().Apply(name, "istio", s.version, params)
+		})
 }
 
 func (s *istioInstaller) Delete(name string) error {

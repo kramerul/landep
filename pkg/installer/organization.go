@@ -26,10 +26,12 @@ func OrganizationInstallerFactory(target landep.Target, version *semver.Version)
 
 func (s *organizationInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
 	orgParams := OrganizationParameter{Username: "admin"}
-	return helper.Apply(&orgParams, func() (interface{}, error) {
-		err := s.cfTarget.CreateOrg(name, orgParams.Username)
-		return &struct{}{}, err
-	})
+	return helper.
+		MergedParameter(&orgParams).
+		Apply(func() (interface{}, error) {
+			err := s.cfTarget.CreateOrg(name, orgParams.Username)
+			return &struct{}{}, err
+		})
 }
 
 func (s *organizationInstaller) Delete(name string) error {

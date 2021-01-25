@@ -25,12 +25,14 @@ func ClusterInstallerFactory(target landep.Target, version *semver.Version) (lan
 
 func (s *clusterInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
 	var params landep.Response
-	return helper.ApplyJson(&params, func() (interface{}, error) {
-		return &ClusterResponse{
-			URL: fmt.Sprintf("https://%s.cluster.hana-ondemand.com", name),
-		}, s.k8sTarget.Helm().Apply(name, "cluster", s.version, params)
+	return helper.
+		MergedJsonParameter(&params).
+		Apply(func() (interface{}, error) {
+			return &ClusterResponse{
+				URL: fmt.Sprintf("https://%s.cluster.hana-ondemand.com", name),
+			}, s.k8sTarget.Helm().Apply(name, "cluster", s.version, params)
 
-	})
+		})
 }
 
 func (s *clusterInstaller) Delete(name string) error {

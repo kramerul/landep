@@ -22,23 +22,28 @@ func CloudFoundryEnvironmentInstallerFactory(target landep.Target, version *semv
 }
 
 func (s *cloudFoundryEnvironmentInstaller) Apply(name string, images map[string]landep.Image, helper *landep.InstallationHelper) (landep.Parameter, error) {
-	shootK8sConfig := ClusterResponse{}
-	config := CloudFoundryResponse{}
+	clusterResponse := ClusterResponse{}
+	cloudFoundryResponse := CloudFoundryResponse{}
+	var parameter landep.Parameter
 	dummy := struct{}{}
-	err := helper.WithInstallationRequest(&shootK8sConfig, "cluster", "docker.io/pkgs/cluster", ">= 1.0", func() error {
-		return helper.WithInstallationRequest(&config, "cloud-foundry", "docker.io/pkgs/cloud-foundry", ">= 2.0", func() error {
+	helper.
+		MergedJsonParameter(&parameter).
+		InstallationRequestCb(&clusterResponse, "cluster", "docker.io/pkgs/cluster", ">= 1.0", func() error {
 			return helper.
-				InstallationRequest(&dummy, "organization", "docker.io/pkgs/organization", ">= 1.0",
-					landep.WithTarget(landep.NewCloudFoundryTarget(&config.CF))).
-				InstallationRequest(&dummy, "service-manager-agent", "docker.io/pkgs/service-manager-agent", ">= 0.1",
-					landep.WithTarget(landep.NewK8sCloudFoundryBridingTarget("service-agent-manager", &shootK8sConfig, &config.CF))).
-				Error()
+				InstallationRequestCb(&cloudFoundryResponse, "cloud-foundry", "docker.io/pkgs/cloud-foundry", ">= 2.0", func() error {
+					return helper.
+						InstallationRequest(&dummy, "organization", "docker.io/pkgs/organization", ">= 1.0",
+							landep.WithTarget(landep.NewCloudFoundryTarget(&cloudFoundryResponse.CF))).
+						InstallationRequest(&dummy, "service-manager-agent", "docker.io/pkgs/service-manager-agent", ">= 0.1",
+							landep.WithTarget(landep.NewK8sCloudFoundryBridingTarget("service-agent-manager", &clusterResponse, &cloudFoundryResponse.CF))).
+						Error()
 
-		}, landep.WithTarget(landep.NewK8sTarget("cf-system", &shootK8sConfig)))
+				}, landep.WithTarget(landep.NewK8sTarget("cf-system", &clusterResponse)))
 
+		})
+	return helper.Apply(func() (interface{}, error) {
+		return &struct{}{}, nil
 	})
-	return []byte("{}"), err
-
 }
 
 func (s *cloudFoundryEnvironmentInstaller) Delete(name string) error {
