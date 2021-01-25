@@ -12,12 +12,14 @@ type cloudFoundryInstaller struct {
 	k8sTarget landep.K8sTarget
 	version   *semver.Version
 }
-type CloudFoundryResponse struct {
-	CF  landep.Credentials `json:"cf"`
-	UAA landep.Credentials `json:"uaa"`
+
+type CloudFoundryResponse = landep.CloudFoundryConfig
+
+func init() {
+	landep.Repository.Register("docker.io/pkgs/cloud-foundry", semver.MustParse("2.0.0"), cloudFoundryInstallerFactory)
 }
 
-func CloudFoundryInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
+func cloudFoundryInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
 	k8sTarget, ok := target.(landep.K8sTarget)
 	if !ok {
 		return nil, errors.New("Not a K8sTarget")
@@ -39,14 +41,14 @@ func (s *cloudFoundryInstaller) Apply(name string, images map[string]landep.Imag
 				return nil, err
 			}
 			return &CloudFoundryResponse{
-				CF: landep.Credentials{
+				CloudFoundryCredentials: landep.Credentials{
 					URL: "https://api.exapmle.com",
 					Basic: landep.BasicAuthorization{
 						Username: "username",
 						Password: "password",
 					},
 				},
-				UAA: landep.Credentials{
+				UAACredentials: landep.Credentials{
 					URL: "https://uaa.exapmle.com",
 					Basic: landep.BasicAuthorization{
 						Username: "username",

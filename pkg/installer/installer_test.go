@@ -13,17 +13,8 @@ var _ = Describe("landep", func() {
 		logs = append(logs, message)
 	}
 	landep.InitFakeTargetFactory(log)
-	repository := landep.Repository{}
-	repository.Register("docker.io/pkgs/kyma", semver.MustParse("1.16.0"), KymaInstallerFactory)
-	repository.Register("docker.io/pkgs/kyma", semver.MustParse("1.17.0"), KymaInstallerFactory)
-	repository.Register("docker.io/pkgs/istio", semver.MustParse("1.7.0"), IstioInstallerFactory)
-	repository.Register("docker.io/pkgs/cluster", semver.MustParse("1.0.1"), ClusterInstallerFactory)
-	repository.Register("docker.io/pkgs/cloud-foundry", semver.MustParse("2.0.0"), CloudFoundryInstallerFactory)
-	repository.Register("docker.io/pkgs/cloud-foundry-environment", semver.MustParse("1.0.0"), CloudFoundryEnvironmentInstallerFactory)
-	repository.Register("docker.io/pkgs/organization", semver.MustParse("1.0.0"), OrganizationInstallerFactory)
-	repository.Register("docker.io/pkgs/service-manager-agent", semver.MustParse("0.1.0"), ServiceManagerAgentInstallerFactory)
 
-	pkgManager := landep.NewPackageManager(repository)
+	pkgManager := landep.NewPackageManager(landep.Repository)
 	k8sConfig := &landep.K8sConfig{URL: "https://gardener.canary.hana-ondemand.com"}
 
 	It("works with cluster-pkg installer", func() {

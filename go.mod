@@ -7,4 +7,5 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.4
+	github.com/spf13/cobra v1.1.1
 )

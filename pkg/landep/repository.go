@@ -12,9 +12,9 @@ type versionedInstaller struct {
 	installer InstallerFactory
 }
 
-type Repository map[string][]versionedInstaller
+type repository map[string][]versionedInstaller
 
-func (s *Repository) Register(name string, version *semver.Version, installer InstallerFactory) {
+func (s *repository) Register(name string, version *semver.Version, installer InstallerFactory) {
 	if *s == nil {
 		*s = make(map[string][]versionedInstaller)
 	}
@@ -26,7 +26,7 @@ func (s *Repository) Register(name string, version *semver.Version, installer In
 	(*s)[name] = installers
 }
 
-func (s *Repository) Get(name string, contraints IntersectedConstrains) (InstallerFactory, *semver.Version, error) {
+func (s *repository) Get(name string, contraints IntersectedConstrains) (InstallerFactory, *semver.Version, error) {
 	installers, ok := (*s)[name]
 	if !ok {
 		return nil, nil, fmt.Errorf("Installer for name %s not found", name)
@@ -43,3 +43,5 @@ func (s *Repository) Get(name string, contraints IntersectedConstrains) (Install
 	// first one contains highest version
 	return installersMatchingVersion[0].installer, installersMatchingVersion[0].version, nil
 }
+
+var Repository = repository{}

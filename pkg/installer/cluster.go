@@ -15,7 +15,11 @@ type clusterInstaller struct {
 
 type ClusterResponse = landep.K8sConfig
 
-func ClusterInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
+func init() {
+	landep.Repository.Register("docker.io/pkgs/cluster", semver.MustParse("1.0.1"), clusterInstallerFactory)
+}
+
+func clusterInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
 	k8sTarget, ok := target.(landep.K8sTarget)
 	if !ok {
 		return nil, errors.New("Not a K8sTarget")

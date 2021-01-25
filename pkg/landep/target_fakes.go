@@ -16,17 +16,16 @@ type fakeTargetFactory struct {
 	log func(message string)
 }
 
-func (s *fakeTargetFactory) K8sCloudFoundryBridgingTarget(namespace string, config *K8sConfig, credentials *Credentials) K8sCloudFoundryBridgingTarget {
-	return &k8sCloudFoundryBridgingTargetFake{k8sTarget: &k8sTargetFake{namespace: namespace, config: config, log: s.log},
-		cloudFoundryTarget: &cloudFoundryTargetFake{url: credentials.URL, log: s.log}}
+func (s *fakeTargetFactory) K8sCloudFoundryBridgingTarget(k8s K8sTarget, cf CloudFoundryTarget) K8sCloudFoundryBridgingTarget {
+	return &k8sCloudFoundryBridgingTargetFake{k8sTarget: k8s, cloudFoundryTarget: cf}
 }
 
 func (s *fakeTargetFactory) K8s(namespace string, config *K8sConfig) K8sTarget {
 	return &k8sTargetFake{namespace: namespace, config: config, log: s.log}
 }
 
-func (s *fakeTargetFactory) CloudFoundry(credentials *Credentials) CloudFoundryTarget {
-	return &cloudFoundryTargetFake{url: credentials.URL, log: s.log}
+func (s *fakeTargetFactory) CloudFoundry(cfConfig *CloudFoundryConfig) CloudFoundryTarget {
+	return &cloudFoundryTargetFake{config: cfConfig, log: s.log}
 }
 
 type k8sTargetFake struct {
@@ -85,13 +84,18 @@ func (s *k8sTargetFake) Digest() []byte {
 }
 
 type cloudFoundryTargetFake struct {
-	url string
-	log func(message string)
+	config *CloudFoundryConfig
+	log    func(message string)
+}
+
+func (s *cloudFoundryTargetFake) Config() *CloudFoundryConfig {
+	return s.config
 }
 
 func (s *cloudFoundryTargetFake) Digest() []byte {
 	hash := md5.New()
-	hash.Write([]byte(s.url))
+	hash.Write([]byte(s.config.CloudFoundryCredentials.URL))
+	hash.Write([]byte(s.config.UAACredentials.URL))
 	return hash.Sum(nil)
 }
 

@@ -13,7 +13,11 @@ type cloudFoundryEnvironmentInstaller struct {
 	version   *semver.Version
 }
 
-func CloudFoundryEnvironmentInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
+func init() {
+	landep.Repository.Register("docker.io/pkgs/cloud-foundry-environment", semver.MustParse("1.0.0"), cloudFoundryEnvironmentInstallerFactory)
+}
+
+func cloudFoundryEnvironmentInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
 	k8sTarget, ok := target.(landep.K8sTarget)
 	if !ok {
 		return nil, errors.New("Not a K8sTarget")
@@ -25,24 +29,17 @@ func (s *cloudFoundryEnvironmentInstaller) Apply(name string, images map[string]
 	clusterResponse := ClusterResponse{}
 	cloudFoundryResponse := CloudFoundryResponse{}
 	var parameter landep.Parameter
-	dummy := struct{}{}
 	helper.
 		MergedJsonParameter(&parameter).
 		InstallationRequestCb(&clusterResponse, "cluster", "docker.io/pkgs/cluster", ">= 1.0", func() error {
 			return helper.
-				InstallationRequestCb(&cloudFoundryResponse, "cloud-foundry", "docker.io/pkgs/cloud-foundry", ">= 2.0", func() error {
-					return helper.
-						InstallationRequest(&dummy, "organization", "docker.io/pkgs/organization", ">= 1.0",
-							landep.WithTarget(landep.NewCloudFoundryTarget(&cloudFoundryResponse.CF))).
-						InstallationRequest(&dummy, "service-manager-agent", "docker.io/pkgs/service-manager-agent", ">= 0.1",
-							landep.WithTarget(landep.NewK8sCloudFoundryBridingTarget("service-agent-manager", &clusterResponse, &cloudFoundryResponse.CF))).
-						Error()
-
-				}, landep.WithTarget(landep.NewK8sTarget("cf-system", &clusterResponse)))
+				InstallationRequest(&cloudFoundryResponse, "cloud-foundry", "docker.io/pkgs/extended-cloud-foundry", ">= 2.0",
+					landep.WithTarget(landep.NewK8sTarget("cf-system", &clusterResponse))).
+				Error()
 
 		})
 	return helper.Apply(func() (interface{}, error) {
-		return &struct{}{}, nil
+		return cloudFoundryResponse, nil
 	})
 }
 

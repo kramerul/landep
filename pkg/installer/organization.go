@@ -16,7 +16,11 @@ type OrganizationParameter struct {
 	Username string `json:"username"`
 }
 
-func OrganizationInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
+func init() {
+	landep.Repository.Register("docker.io/pkgs/organization", semver.MustParse("1.0.0"), organizationInstallerFactory)
+}
+
+func organizationInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
 	cfTarget, ok := target.(landep.CloudFoundryTarget)
 	if !ok {
 		return nil, errors.New("Not a CloudFoundryTarget")

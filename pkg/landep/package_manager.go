@@ -11,11 +11,11 @@ import (
 )
 
 type PackageManager struct {
-	repository            Repository
+	repository            repository
 	installationsByDigest map[string]*Installation
 }
 
-func NewPackageManager(repository Repository) *PackageManager {
+func NewPackageManager(repository repository) *PackageManager {
 	return &PackageManager{repository: repository}
 }
 

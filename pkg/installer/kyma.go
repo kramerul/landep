@@ -14,7 +14,12 @@ type kymaInstaller struct {
 type KymaResponse struct {
 }
 
-func KymaInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
+func init() {
+	landep.Repository.Register("docker.io/pkgs/kyma", semver.MustParse("1.16.0"), kymaInstallerFactory)
+	landep.Repository.Register("docker.io/pkgs/kyma", semver.MustParse("1.17.0"), kymaInstallerFactory)
+}
+
+func kymaInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
 	k8sTarget, ok := target.(landep.K8sTarget)
 	if !ok {
 		return nil, errors.New("Not a K8sTarget")

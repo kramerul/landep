@@ -25,7 +25,11 @@ type IstioParameter struct {
 	Pilot Pilot `json:"pilot"`
 }
 
-func IstioInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
+func init() {
+	landep.Repository.Register("docker.io/pkgs/istio", semver.MustParse("1.7.0"), istioInstallerFactory)
+}
+
+func istioInstallerFactory(target landep.Target, version *semver.Version) (landep.Installer, error) {
 	k8sTarget, ok := target.(landep.K8sTarget)
 	if !ok {
 		return nil, errors.New("Not a K8sTarget")
